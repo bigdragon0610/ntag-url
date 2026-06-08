@@ -76,7 +76,7 @@
       const parsedList = document.getElementById("parsed-list");
       const parsedEmpty = document.getElementById("parsed-empty");
 
-      function looksLikeHttpUrl(value) {
+      function isHttpUrl(value) {
         try {
           const parsed = new URL(value);
           return parsed.protocol === "http:" || parsed.protocol === "https:";
@@ -100,7 +100,7 @@
           const valueEl = document.createElement("div");
           valueEl.className = "text-sm whitespace-pre-wrap break-all";
 
-          if (looksLikeHttpUrl(value)) {
+          if (isHttpUrl(value)) {
             const link = document.createElement("a");
             link.href = value;
             link.target = "_blank";
@@ -172,6 +172,7 @@
             await navigator.clipboard.writeText(value);
             copyStatus.textContent = "コピーしました。";
           } else {
+            generatedUrl.focus();
             generatedUrl.select();
             copyStatus.textContent =
               "この環境では自動コピーできません。選択された文字列を手動でコピーしてください。";

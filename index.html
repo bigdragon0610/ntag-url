@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NFC URL Viewer & Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-white text-black min-h-screen">
+    <main class="max-w-3xl mx-auto p-4 md:p-8 space-y-8">
+      <section class="space-y-3">
+        <h1 class="text-2xl font-bold">NFC URL Viewer & Builder</h1>
+        <p class="text-sm">
+          URLのクエリパラメータを表示し、項目を入力して新しいURLを生成できます。
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-semibold">読み取り結果</h2>
+        <div id="parsed-empty" class="text-sm">クエリパラメータはありません。</div>
+        <div id="parsed-list" class="space-y-3"></div>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-semibold">URL生成</h2>
+        <div id="fields" class="space-y-3"></div>
+        <button
+          id="add-field"
+          type="button"
+          class="border border-black px-3 py-2 text-sm"
+        >
+          項目を追加
+        </button>
+
+        <div class="space-y-2">
+          <label for="generated-url" class="text-sm block">生成URL</label>
+          <textarea
+            id="generated-url"
+            class="w-full border border-black p-2 text-sm"
+            rows="4"
+            readonly
+          ></textarea>
+          <button
+            id="copy-url"
+            type="button"
+            class="border border-black px-3 py-2 text-sm"
+          >
+            コピー
+          </button>
+          <div id="copy-status" class="text-sm" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+
+    <template id="field-template">
+      <div class="field-row border border-black p-3 space-y-2">
+        <div class="space-y-1">
+          <label class="text-sm block">キー</label>
+          <input type="text" class="field-key w-full border border-black p-2 text-sm" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-sm block">値</label>
+          <textarea class="field-value w-full border border-black p-2 text-sm" rows="3"></textarea>
+        </div>
+        <button type="button" class="remove-field border border-black px-3 py-1 text-sm">
+          削除
+        </button>
+      </div>
+    </template>
+
+    <script>
+      const fieldsContainer = document.getElementById("fields");
+      const fieldTemplate = document.getElementById("field-template");
+      const generatedUrl = document.getElementById("generated-url");
+      const copyStatus = document.getElementById("copy-status");
+      const parsedList = document.getElementById("parsed-list");
+      const parsedEmpty = document.getElementById("parsed-empty");
+
+      function isWebUrl(value) {
+        try {
+          const parsed = new URL(value);
+          return parsed.protocol === "http:" || parsed.protocol === "https:";
+        } catch {
+          return false;
+        }
+      }
+
+      function renderParsedData(params) {
+        parsedList.innerHTML = "";
+        parsedEmpty.style.display = params.length ? "none" : "block";
+
+        params.forEach(([key, value]) => {
+          const item = document.createElement("div");
+          item.className = "border border-black p-3 space-y-1";
+
+          const keyEl = document.createElement("div");
+          keyEl.className = "text-sm font-semibold whitespace-pre-wrap";
+          keyEl.textContent = key;
+
+          const valueEl = document.createElement("div");
+          valueEl.className = "text-sm whitespace-pre-wrap break-all";
+
+          if (isWebUrl(value)) {
+            const link = document.createElement("a");
+            link.href = value;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.className = "underline";
+            link.textContent = value;
+            valueEl.appendChild(link);
+          } else {
+            valueEl.textContent = value;
+          }
+
+          item.appendChild(keyEl);
+          item.appendChild(valueEl);
+          parsedList.appendChild(item);
+        });
+      }
+
+      function createField(key = "", value = "") {
+        const fragment = fieldTemplate.content.cloneNode(true);
+        const wrapper = fragment.querySelector(".field-row");
+        if (!wrapper) {
+          console.error("field-row template not found");
+          return;
+        }
+        const keyInput = wrapper.querySelector(".field-key");
+        const valueInput = wrapper.querySelector(".field-value");
+        const removeButton = wrapper.querySelector(".remove-field");
+
+        keyInput.value = key;
+        valueInput.value = value;
+
+        keyInput.addEventListener("input", updateGeneratedUrl);
+        valueInput.addEventListener("input", updateGeneratedUrl);
+        removeButton.addEventListener("click", () => {
+          wrapper.remove();
+          if (!fieldsContainer.children.length) {
+            createField();
+          }
+          updateGeneratedUrl();
+        });
+
+        fieldsContainer.appendChild(wrapper);
+      }
+
+      function collectFields() {
+        const rows = [];
+        fieldsContainer.querySelectorAll(".field-row").forEach((row) => {
+          const key = row.querySelector(".field-key").value;
+          const value = row.querySelector(".field-value").value;
+          rows.push({ key, value });
+        });
+        return rows;
+      }
+
+      function updateGeneratedUrl() {
+        const params = new URLSearchParams();
+        collectFields().forEach(({ key, value }) => {
+          if (!key) return;
+          params.append(key, value);
+        });
+        const baseUrl = `${window.location.origin}${window.location.pathname}`;
+        const query = params.toString();
+        generatedUrl.value = query ? `${baseUrl}?${query}` : baseUrl;
+      }
+
+      async function copyGeneratedUrl() {
+        copyStatus.textContent = "";
+        const value = generatedUrl.value;
+        if (!value) return;
+
+        try {
+          if (navigator.clipboard?.writeText && window.isSecureContext) {
+            await navigator.clipboard.writeText(value);
+            copyStatus.textContent = "コピーしました。";
+          } else {
+            generatedUrl.focus();
+            generatedUrl.select();
+            copyStatus.textContent =
+              "この環境では自動コピーできません。選択された文字列を手動でコピーしてください。";
+            return;
+          }
+        } catch {
+          copyStatus.textContent = "コピーに失敗しました。手動でコピーしてください。";
+        }
+      }
+
+      const parsedParams = Array.from(new URLSearchParams(window.location.search).entries());
+      renderParsedData(parsedParams);
+
+      if (parsedParams.length) {
+        parsedParams.forEach(([key, value]) => createField(key, value));
+      } else {
+        createField();
+      }
+      updateGeneratedUrl();
+
+      document.getElementById("add-field").addEventListener("click", () => {
+        createField();
+        updateGeneratedUrl();
+      });
+      document.getElementById("copy-url").addEventListener("click", copyGeneratedUrl);
+    </script>
+  </body>
+</html>

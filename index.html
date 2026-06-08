@@ -121,7 +121,10 @@
       function createField(key = "", value = "") {
         const fragment = fieldTemplate.content.cloneNode(true);
         const wrapper = fragment.querySelector(".field-row");
-        if (!wrapper) return;
+        if (!wrapper) {
+          console.error("field-row template not found");
+          return;
+        }
         const keyInput = wrapper.querySelector(".field-key");
         const valueInput = wrapper.querySelector(".field-value");
         const removeButton = wrapper.querySelector(".remove-field");
@@ -169,7 +172,7 @@
         if (!value) return;
 
         try {
-          if (navigator.clipboard && window.isSecureContext) {
+          if (navigator.clipboard?.writeText && window.isSecureContext) {
             await navigator.clipboard.writeText(value);
             copyStatus.textContent = "コピーしました。";
           } else {

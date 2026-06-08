@@ -53,7 +53,7 @@
     </main>
 
     <template id="field-template">
-      <div class="border border-black p-3 space-y-2">
+      <div class="field-row border border-black p-3 space-y-2">
         <div class="space-y-1">
           <label class="text-sm block">キー</label>
           <input type="text" class="field-key w-full border border-black p-2 text-sm" />
@@ -76,7 +76,7 @@
       const parsedList = document.getElementById("parsed-list");
       const parsedEmpty = document.getElementById("parsed-empty");
 
-      function isHttpUrl(value) {
+      function isWebUrl(value) {
         try {
           const parsed = new URL(value);
           return parsed.protocol === "http:" || parsed.protocol === "https:";
@@ -100,7 +100,7 @@
           const valueEl = document.createElement("div");
           valueEl.className = "text-sm whitespace-pre-wrap break-all";
 
-          if (isHttpUrl(value)) {
+          if (isWebUrl(value)) {
             const link = document.createElement("a");
             link.href = value;
             link.target = "_blank";
@@ -120,7 +120,8 @@
 
       function createField(key = "", value = "") {
         const fragment = fieldTemplate.content.cloneNode(true);
-        const wrapper = fragment.firstElementChild;
+        const wrapper = fragment.querySelector(".field-row");
+        if (!wrapper) return;
         const keyInput = wrapper.querySelector(".field-key");
         const valueInput = wrapper.querySelector(".field-value");
         const removeButton = wrapper.querySelector(".remove-field");
@@ -143,7 +144,7 @@
 
       function collectFields() {
         const rows = [];
-        fieldsContainer.querySelectorAll(":scope > div").forEach((row) => {
+        fieldsContainer.querySelectorAll(".field-row").forEach((row) => {
           const key = row.querySelector(".field-key").value;
           const value = row.querySelector(".field-value").value;
           rows.push({ key, value });
